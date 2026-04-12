@@ -4,6 +4,7 @@
 // @version      1.1.8
 // @description  Agrega un botón hacia GOGDB con el estilo del botón "Add to cart" en las páginas de juegos de GOG.com.
 // @author       g31w0fw0rld
+// @license      MIT
 // @match        https://www.gog.com/en/game/*
 // @downloadURL  https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js
 // @updateURL    https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js
