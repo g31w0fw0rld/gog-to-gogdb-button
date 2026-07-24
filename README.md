@@ -8,7 +8,7 @@ Userscript de Tampermonkey que añade un botón a GOGDB en las páginas de juego
 
 **Instalación:**
 1. Instala [Tampermonkey](https://www.tampermonkey.net/).
-2. Abre el instalador: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (también en GreasyFork y OpenUserJS).
+2. Abre el instalador: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (también en [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) y [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
 **Sitio:** `gog.com/en/game/*`
 
@@ -18,7 +18,7 @@ Userscript de Tampermonkey que añade un botón a GOGDB en las páginas de juego
 
 **Install:**
 1. Install [Tampermonkey](https://www.tampermonkey.net/).
-2. Open the installer: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (also on GreasyFork and OpenUserJS).
+2. Open the installer: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (also on [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) and [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
 **Site:** `gog.com/en/game/*`
 
