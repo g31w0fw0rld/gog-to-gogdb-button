@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.1.8
-// @description  Agrega un botón hacia GOGDB con el estilo del botón "Add to cart" en las páginas de juegos de GOG.com.
+// @version      1.1.9
+// @description  Adds a GOG Database button (builds, product data, price history, store changes) to GOG.com game pages, styled like GOG's own buttons and linking to that exact product. Runs on the English store URLs (/en/game/) only.
 // @author       g31w0fw0rld
 // @license      MIT
 // @match        https://www.gog.com/en/game/*
