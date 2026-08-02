@@ -15,17 +15,16 @@ Tampermonkey userscript that adds a GOGDB button to GOG.com game pages. / Usersc
 - Built with GOG's own `button--big` classes so it matches "Add to cart" instead of looking bolted on, and it carries the GOGDB logo, positioned to the left of the label.
 - It closes the purchase column: whatever GOG shows there — buy, add to cart or "Go to my library" if you already own the game — the button sits below it.
 - Opens in a new tab, leaving the store page as you left it.
+- Works whatever language you browse the store in: it recognises the game page with or without the locale segment in the URL (`/game/…`, `/en/game/…`, `/de/game/…`, `/zh-Hans/game/…`), and nothing it looks for on the page depends on the text being English.
+- GOG is a single-page app, so the button is reinjected when you navigate from one game to another without a full reload.
 
 **Language:** none needed — the button reads `GOG Database`, a brand name, in every language.
-
-> [!NOTE]
-> The script only runs on the **English** URLs (`gog.com/en/game/…`). If you browse GOG in another language the path changes and the button will not appear. Switching the store to English, or editing the `@match` line in Tampermonkey, both fix it.
 
 **Install:**
 1. Install [Tampermonkey](https://www.tampermonkey.net/).
 2. Open the installer: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (also on [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) and [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
-**Site:** `gog.com/en/game/*`
+**Site:** `gog.com/…/game/*` — any store language, with or without the locale segment.
 
 ## Español
 
@@ -36,17 +35,16 @@ Tampermonkey userscript that adds a GOGDB button to GOG.com game pages. / Usersc
 - Construido con las clases propias de GOG (`button--big`) para que combine con "Add to cart" en vez de parecer un añadido, y lleva el logo de GOGDB colocado a la izquierda de la etiqueta.
 - Cierra la columna de compra: sea lo que sea que muestre GOG ahí —comprar, añadir al carrito o "Go to my library" si ya tienes el juego—, el botón queda debajo.
 - Abre en una pestaña nueva y deja la página de la tienda como estaba.
+- Funciona en cualquier idioma de la tienda: reconoce la ficha de juego con o sin el segmento de idioma en la URL (`/game/…`, `/en/game/…`, `/de/game/…`, `/zh-Hans/game/…`), y nada de lo que busca en la página depende de que el texto esté en inglés.
+- GOG es una SPA, así que el botón se reinyecta al navegar de un juego a otro sin recarga completa.
 
 **Idioma:** no hace falta — el botón dice `GOG Database`, que es una marca, en cualquier idioma.
-
-> [!NOTE]
-> El script solo corre en las URLs en **inglés** (`gog.com/en/game/…`). Si navegas GOG en otro idioma la ruta cambia y el botón no aparece. Se arregla poniendo la tienda en inglés, o editando la línea `@match` en Tampermonkey.
 
 **Instalación:**
 1. Instala [Tampermonkey](https://www.tampermonkey.net/).
 2. Abre el instalador: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (también en [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) y [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
-**Sitio:** `gog.com/en/game/*`
+**Sitio:** `gog.com/…/game/*` — cualquier idioma de la tienda, con o sin el segmento de locale.
 
 ## Privacy / Privacidad
 
