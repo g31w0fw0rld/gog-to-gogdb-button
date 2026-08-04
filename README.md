@@ -1,24 +1,32 @@
 # GOG to GOGDB Button
 
-Tampermonkey userscript that adds a GOGDB button to GOG.com game pages. / Userscript de Tampermonkey que añade un botón a GOGDB en las páginas de juego de GOG.com.
+Tampermonkey userscript that adds GOGDB, GG.deals and PCGamingWiki buttons to GOG.com game pages. / Userscript de Tampermonkey que añade botones a GOGDB, GG.deals y PCGamingWiki en las páginas de juego de GOG.com.
 
-![The GOG Database button below the purchase options on a GOG game page](docs/screenshot-game.png)
+![The GOG Database button and, below it, GG.deals and PCGamingWiki sharing a row at the end of the purchase column on a GOG game page](docs/screenshot-game.png)
 
-*Game page: the button closes the purchase column, styled like GOG's own buttons and with the GOGDB logo to its left. / Página de juego: el botón cierra la columna de compra, con el estilo de los botones propios de GOG y el logo de GOGDB a su izquierda.*
+*Game page: the three buttons close the purchase column, styled like GOG's own. GOG Database takes the full width; GG.deals and PCGamingWiki split the row below it, at the same height. / Página de juego: los tres botones cierran la columna de compra, con el estilo de los propios de GOG. GOG Database ocupa todo el ancho; GG.deals y PCGamingWiki se reparten la fila de abajo, a la misma altura.*
 
 ## English
 
 ### What it does
 
-- Adds a **GOG Database** button to **[GOGDB](https://www.gogdb.org/)** — builds, product data, price history and store changes — on GOG.com game pages.
-- It links to **that exact product**. The slug comes from the page's own `card-product` attribute, so the button lands on the game's GOGDB entry rather than on a search.
-- Built with GOG's own `button--big` classes so it matches "Add to cart" instead of looking bolted on, and it carries the GOGDB logo, positioned to the left of the label.
-- It closes the purchase column: whatever GOG shows there — buy, add to cart or "Go to my library" if you already own the game — the button sits below it.
-- Opens in a new tab, leaving the store page as you left it.
-- Works whatever language you browse the store in: it recognises the game page with or without the locale segment in the URL (`/game/…`, `/en/game/…`, `/de/game/…`, `/zh-Hans/game/…`), and nothing it looks for on the page depends on the text being English.
-- GOG is a single-page app, so the button is reinjected when you navigate from one game to another without a full reload.
+Adds three buttons to the purchase column of GOG.com game pages:
 
-**Language:** none needed — the button reads `GOG Database`, a brand name, in every language.
+- **[GOGDB](https://www.gogdb.org/)** — builds, product data, price history and store changes. It links to **that exact product**: the slug comes from the page's own `card-product` attribute, so the button lands on the game's GOGDB entry rather than on a search.
+- **[GG.deals](https://gg.deals/)** — where else that game is on sale, and for how much. It searches **by title among GOG-DRM deals only**, since that is the DRM (or lack of it) of everything sold in this store, and it turns off the default store-rating floor so no offer is hidden from you.
+- **[PCGamingWiki](https://www.pcgamingwiki.com/)** — compatibility, fixes, ultrawide and frame-rate notes. It searches by title.
+
+Details worth knowing:
+
+- **The last two are title searches, so they can miss**, and each says exactly that in its tooltip. The GOGDB button carries no tooltip: it is built from the slug and cannot miss, and the brand name already says where it goes.
+- **The title is read from the page**, cleaned of GOG's wrapping — the `Buy …` prefix, the `… - GOG.com` tail and trademark symbols. If none of that can be read, the slug itself is turned back into words, so the buttons never point at an empty search. Accents are dropped for GG.deals only, because it transliterates in its own index, and kept for PCGamingWiki, whose articles keep them.
+- **Placement follows GOG's own column:** whatever GOG shows there — buy, add to cart or "Go to my library" if you already own the game — GOG Database sits below it, and the other two form their own row under that, matching its height.
+- The three read as native GOG buttons rather than an add-on. GG.deals and PCGamingWiki are real links, so middle-click and *copy link address* work.
+- They open in a new tab, leaving the store page as you left it.
+- Works whatever language you browse the store in: it recognises the game page with or without the locale segment in the URL (`/game/…`, `/en/game/…`, `/de/game/…`, `/zh-Hans/game/…`), and nothing it looks for on the page depends on the text being English.
+- GOG is a single-page app, so the buttons are reinjected when you navigate from one game to another without a full reload — and the previous game's ones are removed, so you never get a button pointing at what you were looking at before.
+
+**Language:** the labels are brand names, the same in every language. The two tooltips are in **English or Spanish**, picked from the language GOG is serving the page in.
 
 **Install:**
 1. Install [Tampermonkey](https://www.tampermonkey.net/).
@@ -30,15 +38,23 @@ Tampermonkey userscript that adds a GOGDB button to GOG.com game pages. / Usersc
 
 ### Qué hace
 
-- Añade un botón **GOG Database** hacia **[GOGDB](https://www.gogdb.org/)** —builds, datos de producto, historial de precios y cambios en la tienda— en las páginas de juego de GOG.com.
-- Enlaza a **ese producto concreto**. El slug sale del propio atributo `card-product` de la página, así que el botón cae en la ficha del juego en GOGDB y no en una búsqueda.
-- Construido con las clases propias de GOG (`button--big`) para que combine con "Add to cart" en vez de parecer un añadido, y lleva el logo de GOGDB colocado a la izquierda de la etiqueta.
-- Cierra la columna de compra: sea lo que sea que muestre GOG ahí —comprar, añadir al carrito o "Go to my library" si ya tienes el juego—, el botón queda debajo.
-- Abre en una pestaña nueva y deja la página de la tienda como estaba.
-- Funciona en cualquier idioma de la tienda: reconoce la ficha de juego con o sin el segmento de idioma en la URL (`/game/…`, `/en/game/…`, `/de/game/…`, `/zh-Hans/game/…`), y nada de lo que busca en la página depende de que el texto esté en inglés.
-- GOG es una SPA, así que el botón se reinyecta al navegar de un juego a otro sin recarga completa.
+Añade tres botones en la columna de compra de las páginas de juego de GOG.com:
 
-**Idioma:** no hace falta — el botón dice `GOG Database`, que es una marca, en cualquier idioma.
+- **[GOGDB](https://www.gogdb.org/)** —builds, datos de producto, historial de precios y cambios en la tienda—. Enlaza a **ese producto concreto**: el slug sale del propio atributo `card-product` de la página, así que el botón cae en la ficha del juego en GOGDB y no en una búsqueda.
+- **[GG.deals](https://gg.deals/)** —en qué otras tiendas está de oferta ese juego, y a cuánto—. Busca **por título y solo entre ofertas con DRM de GOG**, que es el DRM (o su ausencia) de todo lo que se vende en esta tienda, y desactiva el mínimo de valoración de tienda que trae por defecto para que no te esconda ninguna oferta.
+- **[PCGamingWiki](https://www.pcgamingwiki.com/)** —compatibilidad, arreglos, ultrapanorámico y notas de frame rate—. Busca por título.
+
+Detalles que conviene saber:
+
+- **Los dos últimos buscan por nombre, así que pueden no acertar**, y cada uno lo dice tal cual en su tooltip. El de GOGDB no lleva tooltip: se construye con el slug y no puede fallar, y la marca ya dice a dónde va.
+- **El título se lee de la página** y se limpia de los adornos de GOG: el `Comprar …` del principio, la cola `… - GOG.com` y los símbolos de marca. Si no hubiera nada de eso legible, el propio slug se convierte de vuelta en palabras, así que los botones nunca apuntan a una búsqueda vacía. Los acentos se quitan solo para GG.deals, porque translitera en su índice, y se conservan para PCGamingWiki, cuyos artículos sí los llevan.
+- **La colocación respeta la columna de GOG:** sea lo que sea que muestre ahí —comprar, añadir al carrito o "Go to my library" si ya tienes el juego—, GOG Database queda debajo, y los otros dos forman su propia fila bajo él, a su misma altura.
+- Los tres parecen botones nativos de GOG y no un añadido. GG.deals y PCGamingWiki son enlaces de verdad, así que funcionan el clic central y *copiar dirección del enlace*.
+- Abren en una pestaña nueva y dejan la página de la tienda como estaba.
+- Funciona en cualquier idioma de la tienda: reconoce la ficha de juego con o sin el segmento de idioma en la URL (`/game/…`, `/en/game/…`, `/de/game/…`, `/zh-Hans/game/…`), y nada de lo que busca en la página depende de que el texto esté en inglés.
+- GOG es una SPA, así que los botones se reinyectan al navegar de un juego a otro sin recarga completa —y los del juego anterior se quitan, así que nunca te queda un botón apuntando a lo que estabas viendo antes—.
+
+**Idioma:** las etiquetas son marcas, iguales en cualquier idioma. Los dos tooltips están en **español o inglés**, según el idioma en el que GOG esté sirviendo la página.
 
 **Instalación:**
 1. Instala [Tampermonkey](https://www.tampermonkey.net/).
@@ -48,9 +64,9 @@ Tampermonkey userscript that adds a GOGDB button to GOG.com game pages. / Usersc
 
 ## Privacy / Privacidad
 
-**EN:** the script makes no network requests and stores nothing: it only reads from the page itself what it needs to build the link, and inserts the GOGDB button. It declares `@grant none`, so it has no access to the userscript manager's privileged APIs (storage, cross-origin requests). Nothing is sent to third parties or to the author, and you only visit GOGDB if you click the button.
+**EN:** the script stores nothing and sends nothing to third parties or to the author. From the page it reads only the product slug and the game title, both used to build the links. It declares `@grant none`, so it has no access to the userscript manager's privileged APIs (storage, cross-origin requests). Two requests do leave your browser, both for icons: the GOGDB logo from `gogdb.org` and the GG.deals favicon from `gg.deals`, so those two sites see a plain image request when the buttons are drawn — nothing about which game you are looking at. The PCGamingWiki logo is inline SVG and requests nothing. You only visit any of the three sites if you click.
 
-**ES:** el script no hace ninguna petición de red ni guarda nada: solo lee de la propia página los datos necesarios para construir el enlace e inserta el botón hacia GOGDB. Declara `@grant none`, así que no tiene acceso a las APIs privilegiadas del gestor de userscripts (almacenamiento, peticiones entre dominios). No se envía nada a terceros ni al autor, y solo visitas GOGDB si haces clic en el botón.
+**ES:** el script no guarda nada ni envía nada a terceros ni al autor. De la página lee solo el slug del producto y el título del juego, y con eso arma los enlaces. Declara `@grant none`, así que no tiene acceso a las APIs privilegiadas del gestor de userscripts (almacenamiento, peticiones entre dominios). Sí salen dos peticiones de tu navegador, las dos de iconos: el logo de GOGDB desde `gogdb.org` y el favicon de GG.deals desde `gg.deals`, así que esos dos sitios ven una petición de imagen corriente al dibujarse los botones —nada sobre qué juego estás viendo—. El logo de PCGamingWiki es SVG en línea y no pide nada. Solo visitas cualquiera de los tres sitios si haces clic.
 
 ## Support / Apoyar
 
