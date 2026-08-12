@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.3.0
+// @version      1.4.0
 // @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the slug in the page. GG.deals searches the title among GOG-DRM deals, with no store-rating floor so nothing is hidden. PCGamingWiki searches the title for compatibility and fixes. The last two are title searches and say so in their tooltip. Works in any language, with or without the locale segment in the URL.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -62,30 +62,80 @@
     const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
 
     // =============================================
-    // IDIOMA (solo para los tooltips: español vs. inglés)
+    // IDIOMA (solo para los tooltips)
     // =============================================
-    // Manda el lang del documento: GOG sirve la ficha en el idioma que el usuario
-    // eligió en la tienda, así que es su preferencia y no la UI del sitio.
+    // Los 7 idiomas que sirve GOG, con los MISMOS códigos que usa en la ruta y en
+    // sus <link rel="alternate" hreflang>. Ojo con el chino: GOG lo sirve como
+    // /zh/ (简体中文), NO como /zh-Hans/.
+    const SUPPORTED_LANGS = ['en', 'de', 'es', 'fr', 'pl', 'ru', 'zh'];
+
+    // Reduce un código BCP-47 ('de-DE', 'zh-Hans-CN') al idioma soportado más
+    // cercano; '' si no hay ninguno, para que la cascada siga al siguiente paso.
+    function normalizeLang(raw) {
+        const code = (raw || '').toLowerCase().replace(/_/g, '-');
+        if (!code) return '';
+        if (SUPPORTED_LANGS.includes(code)) return code;
+        const base = code.split('-')[0];
+        return SUPPORTED_LANGS.includes(base) ? base : '';
+    }
+
+    // Cascada, de la señal más fiel a la menos. Lo importante es el paso 1: si el
+    // usuario eligió un idioma en el selector de GOG, el script habla ESE idioma,
+    // en vez de adivinar por navegador y contradecir a la página que lo rodea.
+    //   1) segmento de idioma de la ruta (/de/game/…): elección explícita, y
+    //      además viaja en el enlace que el usuario comparta.
+    //   2) <html lang>: GOG lo fija al idioma con el que sirvió la página, así
+    //      que cubre las rutas sin segmento (/game/slug), negociadas por cabecera.
+    //   3) navigator.languages, si la página no dijo nada.
+    //   4) inglés.
     function detectLang() {
-        const docLang = (document.documentElement.getAttribute('lang') || '').toLowerCase();
-        const navLang = (navigator.language || navigator.languages?.[0] || '').toLowerCase();
-        return (docLang || navLang).startsWith('es') ? 'es' : 'en';
+        const fromPath = normalizeLang(location.pathname.split('/')[1]);
+        if (fromPath) return fromPath;
+        const fromDoc = normalizeLang(document.documentElement.getAttribute('lang'));
+        if (fromDoc) return fromDoc;
+        for (const l of [navigator.language, ...(navigator.languages || [])]) {
+            const n = normalizeLang(l);
+            if (n) return n;
+        }
+        return 'en';
     }
 
     const I18N = {
+        en: {
+            ggTip: 'Searches the title on GG.deals with the GOG DRM filter. Being a title search, it may not hit the exact game.',
+            pcgwTip: 'Searches the title on PCGamingWiki (compatibility and fixes). Being a title search, it may not hit the exact article.'
+        },
         es: {
             ggTip: 'Busca el título en GG.deals con el filtro de DRM de GOG. Al buscar por nombre, puede no dar con el juego exacto.',
             pcgwTip: 'Busca el título en PCGamingWiki (compatibilidad y arreglos). Al buscar por nombre, puede no dar con el artículo exacto.'
         },
-        en: {
-            ggTip: 'Searches the title on GG.deals with the GOG DRM filter. Being a title search, it may not hit the exact game.',
-            pcgwTip: 'Searches the title on PCGamingWiki (compatibility and fixes). Being a title search, it may not hit the exact article.'
+        de: {
+            ggTip: 'Sucht den Titel auf GG.deals mit dem GOG-DRM-Filter. Da es eine Titelsuche ist, wird nicht immer das exakte Spiel getroffen.',
+            pcgwTip: 'Sucht den Titel auf PCGamingWiki (Kompatibilität und Fixes). Da es eine Titelsuche ist, wird nicht immer der exakte Artikel getroffen.'
+        },
+        fr: {
+            ggTip: 'Recherche le titre sur GG.deals avec le filtre DRM GOG. S’agissant d’une recherche par titre, le jeu exact peut ne pas être trouvé.',
+            pcgwTip: 'Recherche le titre sur PCGamingWiki (compatibilité et correctifs). S’agissant d’une recherche par titre, l’article exact peut ne pas être trouvé.'
+        },
+        pl: {
+            ggTip: 'Wyszukuje tytuł w GG.deals z filtrem DRM GOG. Ponieważ to wyszukiwanie po tytule, może nie trafić w dokładną grę.',
+            pcgwTip: 'Wyszukuje tytuł w PCGamingWiki (zgodność i poprawki). Ponieważ to wyszukiwanie po tytule, może nie trafić w dokładny artykuł.'
+        },
+        ru: {
+            ggTip: 'Ищет название на GG.deals с фильтром DRM GOG. Это поиск по названию, поэтому нужная игра может не найтись.',
+            pcgwTip: 'Ищет название на PCGamingWiki (совместимость и исправления). Это поиск по названию, поэтому нужная статья может не найтись.'
+        },
+        zh: {
+            ggTip: '在 GG.deals 上按 GOG DRM 筛选搜索该标题。由于是按标题搜索，可能无法精确匹配到该游戏。',
+            pcgwTip: '在 PCGamingWiki 上搜索该标题（兼容性与修复）。由于是按标题搜索，可能无法精确匹配到对应条目。'
         }
     };
-    const t = I18N[detectLang()];
+    // Merge sobre `en`: una clave que falte en un idioma cae al inglés en vez de
+    // quedar en undefined. Así se pueden añadir idiomas incompletos sin romper nada.
+    const t = { ...I18N.en, ...(I18N[detectLang()] || {}) };
 
     // El segmento de idioma es OPCIONAL: GOG sirve la misma ficha como
-    // /game/slug, /en/game/slug, /de/game/slug, /zh-Hans/game/slug… Por eso el
+    // /game/slug, /en/game/slug, /de/game/slug, /zh/game/slug… Por eso el
     // @match cubre todo www.gog.com y es esta expresión la que decide dónde
     // actuar (mismo enfoque que epic-games-store-to-egdata).
     const GAME_PATH_REGEX = /^\/(?:[^\/]+\/)?game\/.+/;
