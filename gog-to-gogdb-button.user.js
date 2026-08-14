@@ -1,11 +1,12 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.4.0
-// @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the slug in the page. GG.deals searches the title among GOG-DRM deals, with no store-rating floor so nothing is hidden. PCGamingWiki searches the title for compatibility and fixes. The last two are title searches and say so in their tooltip. Works in any language, with or without the locale segment in the URL.
+// @version      1.4.1
+// @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the slug in the page. GG.deals searches the title among GOG-DRM deals, with no store-rating floor so nothing is hidden. PCGamingWiki searches the title for compatibility and fixes. The last two are title searches and say so in a tooltip drawn with GOG's own hint styles. Works in any language.
 // @author       g31w0fw0rld
 // @license      MIT
-// @match        https://www.gog.com/*
+// @match        https://www.gog.com/*/game/*
+// @match        https://www.gog.com/game/*
 // @downloadURL  https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js
 // @updateURL    https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js
 // @grant        none
@@ -44,8 +45,23 @@
 
     const LINKS_CLASS = 'gogx-links';
     const LINK_CLASS = 'gogx-link';
+    // Marca propia del botón de GOG Database, solo para poder darle los dos retoques
+    // que necesita por ser un <a> vestido con clases de <button>.
+    const GOGDB_LINK_CLASS = 'gogx-gogdb';
     const ICON_CLASS = 'gogx-ico';
     const STYLES_ID = 'gogx-styles';
+
+    // Clases del componente "hint" de GOG, que es como la tienda dibuja sus propios
+    // tooltips (lo usa, por ejemplo, en el botón de guardar reseña). Es CSS puro, sin
+    // una línea de JS: `.hint__trigger:hover + .hint__content` lo enseña, y el resto
+    // —fondo, borde, flecha, tipografía— sale de sus variables de tema. Reutilizarlo
+    // es lo que hace que el aviso salga con la caja de GOG en vez de con la del
+    // sistema operativo. Su CSS vive en el bundle de la ficha de producto, que ya
+    // está cargado; aquí no se copia ni un color.
+    const HINT_CLASS = 'hint';
+    const HINT_TRIGGER_CLASS = 'hint__trigger';
+    const HINT_CONTENT_CLASS = 'hint__content';
+    const HINT_LABEL_CLASS = 'hint__content-label';
 
     // Fuentes del nombre del juego, en orden de preferencia. Como último recurso se
     // usa el slug, que siempre está (es el que alimenta el botón de GOGDB): pierde
@@ -181,8 +197,18 @@
      * @returns {HTMLButtonElement} El botón listo para insertar en el DOM.
      */
     function createGOGDBButton(slug) {
-        const button = document.createElement('button');
-        button.className = 'button button--big go-to-library-button';
+        // Es un <a> de verdad, no un <button> con onclick: así funcionan el clic
+        // central, "abrir en pestaña nueva" y "copiar dirección del enlace", como en
+        // los otros dos botones de esta misma fila. Se puede porque las reglas de GOG
+        // son POR CLASE (.button, .button--big, .go-to-library-button), no por
+        // elemento (button.button), así que visten un <a> exactamente igual; su reset
+        // global (* { box-sizing: border-box } y a { text-decoration: none }) remata
+        // las dos únicas diferencias que trae el navegador.
+        const button = document.createElement('a');
+        button.className = `button button--big go-to-library-button ${GOGDB_LINK_CLASS}`;
+        button.href = `${GOGDB_BASE_URL}${slug}`;
+        button.target = '_blank';
+        button.rel = 'nofollow noopener external';
         button.setAttribute('selenium-id', 'GOGDBButton');
         button.setAttribute(BUTTON_ATTR, slug);
         button.style.marginTop = '16px';
@@ -210,8 +236,6 @@
         wrapper.appendChild(icon);
         wrapper.appendChild(label);
         button.appendChild(wrapper);
-
-        button.onclick = () => window.open(`${GOGDB_BASE_URL}${slug}`, '_blank');
 
         return button;
     }
@@ -280,11 +304,35 @@
                 background: #e4e4e4; color: #2b2b2b; text-decoration: none;
                 box-shadow: 0 2px 6px rgba(0, 0, 0, .22);
             }
+            /* El botón de GOG Database es un <a> con las clases de botón de GOG. Su
+               reset ya deja los <a> sin subrayado y en border-box, pero eso vive en
+               su hoja: si un día cambia, esto evita que el botón salga subrayado o
+               desbordado por el padding. */
+            a.${GOGDB_LINK_CLASS}, a.${GOGDB_LINK_CLASS}:hover { text-decoration: none; box-sizing: border-box; }
+
             .${ICON_CLASS} { display: inline-flex; align-items: center; flex: 0 0 auto; }
             img.${ICON_CLASS} { width: 14px; height: 14px; object-fit: contain; }
             /* El logo de PCGamingWiki es más alto que ancho (viewBox 827x1158): se
                fija el alto y se deja el ancho automático para no deformarlo. */
             .${ICON_CLASS} svg { height: 14px; width: auto; display: block; }
+
+            /* Lo mínimo para encajar el hint de GOG en esta fila. El hint pasa a ser
+               el hijo flexible —antes lo era el propio enlace— y el trigger tiene que
+               ocupar toda su caja para que el enlace siga midiendo lo mismo. */
+            .${LINKS_CLASS} .${HINT_CLASS} { flex: 1 1 0; min-width: 0; }
+            .${LINKS_CLASS} .${HINT_TRIGGER_CLASS} { display: flex; height: 100%; }
+            /* Dos retoques a su caja, con un selector más específico que el suyo:
+               - text-wrap: GOG la deja en nowrap porque sus avisos son de tres o
+                 cuatro palabras; los de aquí pasan de cien caracteres y saldrían en
+                 una sola línea fuera de la pantalla.
+               - bottom: su 40px fijo da por hecha la altura de sus botones. Aquí la
+                 altura se copia del botón de GOGDB (--gogx-h), así que el hueco se
+                 calcula con ella y el tooltip nunca pisa el botón. */
+            .${LINKS_CLASS} .${HINT_CLASS} .${HINT_CONTENT_CLASS} {
+                text-wrap: wrap; white-space: normal; text-align: center;
+                width: max-content; max-width: 240px;
+                bottom: calc(var(--gogx-h, 40px) + 8px);
+            }
         `;
         (document.head || document.documentElement).appendChild(style);
     }
@@ -293,6 +341,8 @@
      * Crea un enlace con el icono dentro y a la izquierda de la etiqueta, con el
      * aspecto que le da injectStyles(). Es un <a> real, así que funcionan el clic
      * central y "copiar dirección del enlace".
+     * El `title` se pone siempre: es la caída para cuando el hint de GOG no se pueda
+     * montar. wrapInHint() lo retira cuando sí lo monta.
      * @param {{ label: string, url: string, iconSvg?: string, iconUrl?: string, tooltip: string }} opts
      * @returns {HTMLAnchorElement} El enlace listo para insertar.
      */
@@ -321,6 +371,70 @@
         return a;
     }
 
+    // Resultado de hintStylesAreLive(), que solo hace falta una vez por página: el
+    // CSS de GOG no va a cambiar entre una inyección y la siguiente, y el observer
+    // de la SPA llama a esto cada vez que vuelve a montar la ficha.
+    let hintIsLive = null;
+
+    /**
+     * Comprueba que el componente hint de GOG siga vivo, midiendo un ejemplar suyo.
+     * No es un lujo: lo que esconde el texto del tooltip es el `display: none` de SU
+     * hoja de estilos. Si GOG renombrara las clases, el aviso se quedaría escrito en
+     * mitad de la ficha, siempre visible; mejor no montarlo y quedarse con el `title`
+     * del navegador, que nunca se ve mal.
+     * @returns {boolean} true si `.hint__content` sigue naciendo oculto.
+     */
+    function hintStylesAreLive() {
+        if (hintIsLive !== null) return hintIsLive;
+
+        const probe = document.createElement('div');
+        probe.className = HINT_CLASS;
+        const trigger = document.createElement('div');
+        trigger.className = HINT_TRIGGER_CLASS;
+        const content = document.createElement('div');
+        content.className = HINT_CONTENT_CLASS;
+        probe.appendChild(trigger);
+        probe.appendChild(content);
+        // Fuera de la vista mientras se mide, por si el CSS ya no estuviera.
+        probe.style.position = 'absolute';
+        probe.style.left = '-9999px';
+        document.body.appendChild(probe);
+        hintIsLive = getComputedStyle(content).display === 'none';
+        probe.remove();
+        return hintIsLive;
+    }
+
+    /**
+     * Envuelve un enlace en el hint de GOG, con el texto del aviso dentro. El `title`
+     * se retira aquí: con el hint puesto sobrarían los dos, uno encima del otro.
+     * @param {HTMLAnchorElement} link - El enlace ya creado, con su title puesto.
+     * @param {string} text - El mismo texto del title.
+     * @returns {HTMLElement} El hint listo para insertar, o el enlace tal cual si el
+     *   CSS de GOG ya no está.
+     */
+    function wrapInHint(link, text) {
+        if (!hintStylesAreLive()) return link;
+
+        const box = document.createElement('div');
+        box.className = HINT_CLASS;
+
+        const trigger = document.createElement('div');
+        trigger.className = HINT_TRIGGER_CLASS;
+        trigger.appendChild(link);
+
+        const content = document.createElement('div');
+        content.className = HINT_CONTENT_CLASS;
+        const label = document.createElement('span');
+        label.className = HINT_LABEL_CLASS;
+        label.textContent = text;
+        content.appendChild(label);
+
+        box.appendChild(trigger);
+        box.appendChild(content);
+        link.removeAttribute('title');
+        return box;
+    }
+
     /**
      * Fila con los enlaces a GG.deals y PCGamingWiki. Lleva la misma marca de slug
      * que el botón de GOGDB para que removeStaleButtons() la limpie al navegar por
@@ -339,18 +453,18 @@
             minRating: GGDEALS_MIN_RATING,
             title: normalizeForGgDeals(title)
         });
-        box.appendChild(createLinkButton({
+        box.appendChild(wrapInHint(createLinkButton({
             label: 'GG.deals',
             url: `${GGDEALS_SEARCH_URL}?${ggParams}`,
             iconUrl: GGDEALS_ICON_URL,
             tooltip: t.ggTip
-        }));
-        box.appendChild(createLinkButton({
+        }), t.ggTip));
+        box.appendChild(wrapInHint(createLinkButton({
             label: 'PCGamingWiki',
             url: `${PCGW_SEARCH_URL}?${new URLSearchParams({ search: title })}`,
             iconSvg: PCGW_ICON_SVG,
             tooltip: t.pcgwTip
-        }));
+        }), t.pcgwTip));
         return box;
     }
 
