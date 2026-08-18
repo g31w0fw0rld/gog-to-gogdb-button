@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.4.1
-// @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the slug in the page. GG.deals searches the title among GOG-DRM deals, with no store-rating floor so nothing is hidden. PCGamingWiki searches the title for compatibility and fixes. The last two are title searches and say so in a tooltip drawn with GOG's own hint styles. Works in any language.
+// @version      1.5.0
+// @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the product id in the page. GG.deals searches GOG-DRM deals with no store-rating floor, and PCGamingWiki searches for compatibility and fixes. Both search by the English name from GOG's API, because GOG translates game names and both sites index in English; both say so in a tooltip in GOG's own hint style.
 // @author       g31w0fw0rld
 // @license      MIT
 // @match        https://www.gog.com/*/game/*
@@ -35,6 +35,49 @@
     const GGDEALS_MIN_RATING = '0';
     const PCGW_SEARCH_URL = 'https://www.pcgamingwiki.com/w/index.php';
 
+    // Nombre en inglés. El de la ficha NO sirve: GOG traduce el nombre del propio
+    // producto —/zh/game/cyberpunk_2077 lo anuncia como «赛博朋克 2077», mientras
+    // que /en/ y /ru/ dan "Cyberpunk 2077"—, y GG.deals y PCGamingWiki están
+    // indexados en inglés.
+    //
+    // La fuente es api.gog.com/products/{id}, que responde con CORS abierto para
+    // www.gog.com (así que `@grant none` sobrevive) y devuelve SIEMPRE el título en
+    // inglés: no atiende ni `?locale=` ni `Accept-Language`, comprobado con los dos.
+    // Su `{id}` es el mismo `card-product` que ya alimenta el botón de GOGDB.
+    //
+    // Descartado catalog.gog.com/v1/catalog: su `query=slug:…` no filtra por campo,
+    // es búsqueda difusa —`slug:cyberpunk_2077` devuelve Alan Wake— y además sí
+    // localiza los títulos.
+    const GOG_PRODUCT_API = 'https://api.gog.com/products/';
+    // Juego base de un DLC. PCGamingWiki no tiene artículo por DLC —los documenta
+    // dentro del juego al que pertenecen—, así que ese botón busca el base; GG.deals
+    // sí vende los DLC por separado y se queda con el nombre propio.
+    // El v1 dice SI es un DLC (`game_type`), pero no de qué juego: eso solo está en
+    // el v2, en `_links.requiresGames`, del que se saca el id del base para volver a
+    // pedirle su título al v1. Comprobado con Phantom Liberty (1256837418):
+    // game_type "dlc" y requiresGames -> .../v2/games/1423049311, que es Cyberpunk 2077.
+    const GOG_GAME_API_V2 = 'https://api.gog.com/v2/games/';
+    const GOG_GAME_ID_REGEX = /\/games\/(\d+)/;
+    // Las ediciones y paquetes tampoco tienen artículo propio en PCGamingWiki, y
+    // GOG los declara con el mismo `game_type`: "pack". Ahí el juego no está en
+    // `requiresGames` sino en `_embedded.editions`, la lista de hermanas del mismo
+    // juego, donde la base viene con el nombre "Base Edition". Comprobado con
+    // Cyberpunk 2077: Ultimate Edition (1274966284), cuyas editions son
+    //   2093619782 "Base Edition"  y  1274966284 "Ultimate Edition"
+    // y el primer id es el del juego suelto. Se compara contra el id de la ficha
+    // porque la MISMA lista sale al abrir la edición base, y ahí no hay nada que
+    // cambiar.
+    const GOG_TYPE_DLC = 'dlc';
+    const GOG_TYPE_PACK = 'pack';
+    const GOG_BASE_EDITION_REGEX = /^base\b/i;
+    // El nombre en inglés de un producto ya publicado no cambia casi nunca, así que
+    // 30 días de caché es conservador; el tope de entradas es para que no crezca
+    // sin fin.
+    const NAME_CACHE_KEY = 'gog2gogdb-en-names';
+    const NAME_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;   // 30 días
+    const NAME_CACHE_MAX = 200;                        // entradas
+    const NAME_TIMEOUT_MS = 8000;
+
     // Icono de GG.deals: favicon remoto (su CDN permite el hotlink). Si el CSP de
     // GOG lo bloqueara, el onerror lo quita y queda solo la etiqueta.
     const GGDEALS_ICON_URL = 'https://gg.deals/favicon.ico';
@@ -63,9 +106,8 @@
     const HINT_CONTENT_CLASS = 'hint__content';
     const HINT_LABEL_CLASS = 'hint__content-label';
 
-    // Fuentes del nombre del juego, en orden de preferencia. Como último recurso se
-    // usa el slug, que siempre está (es el que alimenta el botón de GOGDB): pierde
-    // la puntuación y las mayúsculas, pero como término de búsqueda sirve.
+    // Fuentes del nombre del juego, en orden de preferencia. Lo que dan puede venir
+    // traducido: es el nombre que se pinta mientras llega el inglés de la API.
     const TITLE_SELECTORS = ['h1.productcard-basics__title', '.productcard-basics__title', '.header__title', 'h1'];
 
     // Limpieza del título antes de buscarlo fuera de GOG.
@@ -76,6 +118,10 @@
     const TITLE_SUFFIX_REGEX = /\s*(?:[-–|]\s*|\s+(?:on|en|sur|auf|su|em)\s+)GOG\.com.*$/i;
     // Diacríticos combinados, para quitarlos tras normalizar a NFD.
     const DIACRITICS_REGEX = /[\u0300-\u036f]/g;
+    // Sufijos de empaquetado que PCGamingWiki no usa: documenta el juego base y no
+    // tiene páginas por edición. "Definitive", "Anniversary", "Remastered" y "Game
+    // of the Year" NO se tocan: ahí sí suelen ser lanzamientos con página propia.
+    const SKU_EDITION_REGEX = /[\s:–—-]+(?:digital\s+)?(?:standard|deluxe|premium|ultimate|gold|platinum|complete|collector'?s|founder'?s)\s+edition\s*$/i;
 
     // =============================================
     // IDIOMA (solo para los tooltips)
@@ -119,31 +165,31 @@
     const I18N = {
         en: {
             ggTip: 'Searches the title on GG.deals with the GOG DRM filter. Being a title search, it may not hit the exact game.',
-            pcgwTip: 'Searches the title on PCGamingWiki (compatibility and fixes). Being a title search, it may not hit the exact article.'
+            pcgwTip: 'Searches PCGamingWiki (compatibility and fixes) for the game itself: without the edition suffix, and for DLC and packs, by their base game. Being a name search, it may not hit the exact article.'
         },
         es: {
             ggTip: 'Busca el título en GG.deals con el filtro de DRM de GOG. Al buscar por nombre, puede no dar con el juego exacto.',
-            pcgwTip: 'Busca el título en PCGamingWiki (compatibilidad y arreglos). Al buscar por nombre, puede no dar con el artículo exacto.'
+            pcgwTip: 'Busca en PCGamingWiki (compatibilidad y arreglos) el juego en sí: sin el sufijo de edición y, en DLC y paquetes, por su juego base. Al buscar por nombre, puede no dar con el artículo exacto.'
         },
         de: {
             ggTip: 'Sucht den Titel auf GG.deals mit dem GOG-DRM-Filter. Da es eine Titelsuche ist, wird nicht immer das exakte Spiel getroffen.',
-            pcgwTip: 'Sucht den Titel auf PCGamingWiki (Kompatibilität und Fixes). Da es eine Titelsuche ist, wird nicht immer der exakte Artikel getroffen.'
+            pcgwTip: 'Sucht auf PCGamingWiki (Kompatibilität und Fixes) nach dem Spiel selbst: ohne Editions-Zusatz und bei DLC und Paketen nach dem Hauptspiel. Da nach dem Namen gesucht wird, trifft es nicht immer den genauen Artikel.'
         },
         fr: {
             ggTip: 'Recherche le titre sur GG.deals avec le filtre DRM GOG. S’agissant d’une recherche par titre, le jeu exact peut ne pas être trouvé.',
-            pcgwTip: 'Recherche le titre sur PCGamingWiki (compatibilité et correctifs). S’agissant d’une recherche par titre, l’article exact peut ne pas être trouvé.'
+            pcgwTip: 'Recherche sur PCGamingWiki (compatibilité et correctifs) le jeu lui-même : sans le suffixe d\'édition et, pour les DLC et les packs, par leur jeu de base. S\'agissant d\'une recherche par nom, elle peut ne pas tomber sur l\'article exact.'
         },
         pl: {
             ggTip: 'Wyszukuje tytuł w GG.deals z filtrem DRM GOG. Ponieważ to wyszukiwanie po tytule, może nie trafić w dokładną grę.',
-            pcgwTip: 'Wyszukuje tytuł w PCGamingWiki (zgodność i poprawki). Ponieważ to wyszukiwanie po tytule, może nie trafić w dokładny artykuł.'
+            pcgwTip: 'Szuka w PCGamingWiki (zgodność i poprawki) samej gry: bez dopisku edycji, a w przypadku DLC i pakietów — po grze podstawowej. Ponieważ to wyszukiwanie po nazwie, może nie trafić w dokładny artykuł.'
         },
         ru: {
             ggTip: 'Ищет название на GG.deals с фильтром DRM GOG. Это поиск по названию, поэтому нужная игра может не найтись.',
-            pcgwTip: 'Ищет название на PCGamingWiki (совместимость и исправления). Это поиск по названию, поэтому нужная статья может не найтись.'
+            pcgwTip: 'Ищет в PCGamingWiki (совместимость и исправления) саму игру: без суффикса издания, а для DLC и наборов — по базовой игре. Это поиск по названию, поэтому он может не попасть в нужную статью.'
         },
         zh: {
             ggTip: '在 GG.deals 上按 GOG DRM 筛选搜索该标题。由于是按标题搜索，可能无法精确匹配到该游戏。',
-            pcgwTip: '在 PCGamingWiki 上搜索该标题（兼容性与修复）。由于是按标题搜索，可能无法精确匹配到对应条目。'
+            pcgwTip: '在 PCGamingWiki（兼容性与修复）上搜索游戏本体：去掉版本后缀，DLC 和捆绑包则按其本体游戏搜索。由于是按名称搜索，可能无法精确对应到该条目。'
         }
     };
     // Merge sobre `en`: una clave que falte en un idioma cae al inglés en vez de
@@ -241,26 +287,140 @@
     }
 
     /**
-     * Nombre del juego para las búsquedas externas. Prueba los encabezados de la
-     * ficha, cae a og:title y document.title —a los que hay que quitarles el
-     * "… - GOG.com"— y, si nada de eso hubiera, reconstruye algo legible desde el
-     * slug, que siempre está.
-     * @param {string} slug - Slug del producto en GOG, como respaldo final.
-     * @returns {string} Título limpio (nunca vacío si hay slug).
+     * Nombre del juego tal y como lo trae la ficha: los encabezados primero y, como
+     * respaldo, og:title y document.title —a los que hay que quitarles el
+     * "… - GOG.com"—. Puede venir traducido; para las búsquedas manda el que
+     * devuelve fetchEnglishTitle(), y este solo es lo que se pinta mientras llega.
+     *
+     * Ya NO cae al identificador del producto. Ese respaldo se escribió creyendo que
+     * `card-product` era el slug, y no lo es: es el id numérico (Cyberpunk 2077 =
+     * 2093619782), así que cuando entraba mandaba a buscar "2093619782" a los dos
+     * sitios. Sin encabezado legible es mejor no poner los dos botones de búsqueda.
+     * @returns {string} Título limpio, o cadena vacía si no se pudo leer.
      */
-    function getGameTitle(slug) {
+    function getGameTitle() {
         const heading = TITLE_SELECTORS
             .map((sel) => document.querySelector(sel)?.textContent)
             .find((text) => text && text.trim());
         const og = document.querySelector('meta[property="og:title"]')?.content;
-        const title = (heading || og || document.title || '')
+        return (heading || og || document.title || '')
             .trim()
             .replace(TITLE_PREFIX_REGEX, '')
             .replace(TITLE_SUFFIX_REGEX, '')
             .replace(TRADEMARK_REGEX, '')
             .replace(/\s+/g, ' ')
             .trim();
-        return title || (slug || '').replace(/[_-]+/g, ' ').trim();
+    }
+
+    // =============================================
+    // NOMBRE EN INGLÉS (API de GOG)
+    // =============================================
+
+    function readNameCache(id) {
+        try {
+            const all = JSON.parse(localStorage.getItem(NAME_CACHE_KEY) || '{}');
+            const hit = all[id];
+            if (hit && Date.now() - hit.ts < NAME_CACHE_TTL) return hit.names;
+        } catch (e) { /* caché corrupta: se ignora y se vuelve a pedir */ }
+        return null;
+    }
+
+    function writeNameCache(id, names) {
+        try {
+            let all = {};
+            try { all = JSON.parse(localStorage.getItem(NAME_CACHE_KEY) || '{}'); } catch (e) { all = {}; }
+            all[id] = { names, ts: Date.now() };
+            const keys = Object.keys(all);
+            if (keys.length > NAME_CACHE_MAX) {
+                keys.sort((a, b) => (all[a].ts || 0) - (all[b].ts || 0))
+                    .slice(0, keys.length - NAME_CACHE_MAX)
+                    .forEach((k) => delete all[k]);
+            }
+            localStorage.setItem(NAME_CACHE_KEY, JSON.stringify(all));
+        } catch (e) { console.error('(gog2gogdb): writeNameCache error:', e); }
+    }
+
+    /** Misma limpieza que getGameTitle() aplica al nombre de la ficha. */
+    function cleanApiName(name) {
+        return (name || '').replace(TRADEMARK_REGEX, '').replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * GET con corte por tiempo. Devuelve el JSON, o null ante cualquier fallo.
+     * @param {string} url - URL a pedir.
+     * @returns {Promise<any|null>} El JSON, o null.
+     */
+    async function fetchJson(url) {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), NAME_TIMEOUT_MS);
+        try {
+            const res = await fetch(url, { credentials: 'omit', signal: ctrl.signal });
+            return res.ok ? await res.json() : null;
+        } catch (e) {
+            console.warn('(gog2gogdb): API de GOG sin respuesta:',
+                e.name === 'AbortError' ? 'tiempo agotado' : e.message);
+            return null;
+        } finally { clearTimeout(timer); }
+    }
+
+    /**
+     * Identificador del juego al que pertenece un DLC, una edición o un paquete.
+     * Los dos caminos viven en el v2 y son distintos: un DLC declara su juego en
+     * `_links.requiresGames`; una edición o paquete, en `_embedded.editions`.
+     * @param {string} id - Identificador del producto en GOG.
+     * @param {string} gameType - `game_type` que devolvió el v1.
+     * @returns {Promise<string>} Id del juego base, o cadena vacía.
+     */
+    async function findBaseProductId(id, gameType) {
+        if (gameType !== GOG_TYPE_DLC && gameType !== GOG_TYPE_PACK) return '';
+
+        const v2 = await fetchJson(GOG_GAME_API_V2 + encodeURIComponent(id));
+        if (!v2) return '';
+
+        if (gameType === GOG_TYPE_DLC) {
+            const href = v2._links?.requiresGames?.[0]?.href || '';
+            return (href.match(GOG_GAME_ID_REGEX) || [])[1] || '';
+        }
+
+        const editions = v2._embedded?.editions || [];
+        const base = editions.find((e) => GOG_BASE_EDITION_REGEX.test(e?.name || '')
+            && String(e.id) !== String(id));
+        return base ? String(base.id) : '';
+    }
+
+    /**
+     * Nombres en inglés del producto, pedidos a la API de GOG. Una petición colgada
+     * dejaría los enlaces sin corregir y sin nada en consola que lo explique, de ahí
+     * el corte por tiempo. Devuelve null ante cualquier fallo, que es lo que deja
+     * los botones con el título de la ficha.
+     *
+     * Un DLC cuesta hasta tres peticiones (producto, v2 del DLC, producto del base),
+     * pero solo la primera vez: la caché guarda por id, así que el título del juego
+     * base se reaprovecha entre todos sus DLC. Y el orden importa: si el v2 no
+     * contesta o el DLC no declara juego base, se devuelve igualmente el nombre
+     * propio en vez de no devolver nada.
+     * @param {string} id - Identificador del producto en GOG (el `card-product`).
+     * @returns {Promise<{name: string, baseName: string}|null>} Nombre propio y, si
+     *     es un DLC, el del juego base; null si no se pudo obtener.
+     */
+    async function fetchEnglishNames(id) {
+        const cached = readNameCache(id);
+        if (cached) return cached;
+
+        const product = await fetchJson(GOG_PRODUCT_API + encodeURIComponent(id));
+        const name = cleanApiName(product?.title);
+        if (!name) return null;
+
+        let baseName = '';
+        const baseId = await findBaseProductId(id, product.game_type);
+        if (baseId) {
+            const base = await fetchJson(GOG_PRODUCT_API + baseId);
+            baseName = cleanApiName(base?.title);
+        }
+
+        const names = { name, baseName };
+        writeNameCache(id, names);
+        return names;
     }
 
     /**
@@ -436,35 +596,88 @@
     }
 
     /**
-     * Fila con los enlaces a GG.deals y PCGamingWiki. Lleva la misma marca de slug
-     * que el botón de GOGDB para que removeStaleButtons() la limpie al navegar por
-     * la SPA; si no, quedaría la fila del producto anterior.
-     * @param {string} slug - Slug del producto en GOG.
-     * @returns {HTMLDivElement} El contenedor con los dos enlaces.
+     * URL de la búsqueda de GG.deals por título, filtrada al DRM de GOG. Está
+     * aparte del botón porque el href se reescribe cuando llega el nombre en inglés.
+     * @param {string} title - Título del juego.
+     * @returns {string} La URL de búsqueda.
      */
-    function createExternalLinks(slug) {
-        const title = getGameTitle(slug);
-        const box = document.createElement('div');
-        box.className = LINKS_CLASS;
-        box.setAttribute(BUTTON_ATTR, slug);
-
-        const ggParams = new URLSearchParams({
+    function ggDealsUrl(title) {
+        const params = new URLSearchParams({
             drm: GGDEALS_GOG_DRM,
             minRating: GGDEALS_MIN_RATING,
             title: normalizeForGgDeals(title)
         });
-        box.appendChild(wrapInHint(createLinkButton({
+        return `${GGDEALS_SEARCH_URL}?${params}`;
+    }
+
+    /**
+     * URL de la búsqueda de PCGamingWiki por título. Aparte por el mismo motivo
+     * que ggDealsUrl().
+     * @param {string} title - Título del juego.
+     * @returns {string} La URL de búsqueda.
+     */
+    function pcgwUrl(title) {
+        return `${PCGW_SEARCH_URL}?${new URLSearchParams({ search: pcgwSearchTitle(title) })}`;
+    }
+
+    /**
+     * Recorta lo que PCGamingWiki no indexa: los sufijos de edición. Si el recorte
+     * dejara la cadena vacía —un producto llamado solo "Deluxe Edition"— se queda
+     * el título entero, que es peor buscar que nada.
+     * @param {string} title - Título del producto.
+     * @returns {string} Título sin el sufijo de edición.
+     */
+    function pcgwSearchTitle(title) {
+        return title.replace(SKU_EDITION_REGEX, '').trim() || title;
+    }
+
+    /**
+     * Fila con los enlaces a GG.deals y PCGamingWiki. Lleva la misma marca de
+     * producto que el botón de GOGDB para que removeStaleButtons() la limpie al
+     * navegar por la SPA; si no, quedaría la fila del producto anterior.
+     * @param {string} slug - Identificador del producto en GOG (el `card-product`,
+     *     que pese al nombre de la variable es el id numérico).
+     * @returns {HTMLDivElement|null} El contenedor con los dos enlaces, o null si
+     *     la ficha no da ningún nombre con el que buscar.
+     */
+    function createExternalLinks(slug) {
+        const title = getGameTitle();
+        if (!title) return null;   // sin nombre legible no hay búsqueda que ofrecer
+
+        const box = document.createElement('div');
+        box.className = LINKS_CLASS;
+        box.setAttribute(BUTTON_ATTR, slug);
+
+        const ggLink = createLinkButton({
             label: 'GG.deals',
-            url: `${GGDEALS_SEARCH_URL}?${ggParams}`,
+            url: ggDealsUrl(title),
             iconUrl: GGDEALS_ICON_URL,
             tooltip: t.ggTip
-        }), t.ggTip));
-        box.appendChild(wrapInHint(createLinkButton({
+        });
+        const pcgwLink = createLinkButton({
             label: 'PCGamingWiki',
-            url: `${PCGW_SEARCH_URL}?${new URLSearchParams({ search: title })}`,
+            url: pcgwUrl(title),
             iconSvg: PCGW_ICON_SVG,
             tooltip: t.pcgwTip
-        }), t.pcgwTip));
+        });
+        box.appendChild(wrapInHint(ggLink, t.ggTip));
+        box.appendChild(wrapInHint(pcgwLink, t.pcgwTip));
+
+        // El nombre en inglés se pide DESPUÉS de pintar y solo reescribe los dos
+        // href. Esperarlo antes retrasaría toda la fila, y la dejaría sin aparecer
+        // cada vez que la API no contestara; así el peor caso es quedarse con el
+        // título de la ficha, que es exactamente lo de antes.
+        // El isConnected es por la SPA: si el usuario navega a otro producto antes
+        // de que llegue la respuesta, removeStaleButtons() ya se llevó esta fila y
+        // reescribirla sería tocar nodos huérfanos.
+        fetchEnglishNames(slug).then((names) => {
+            if (!names) return;
+            if (!ggLink.isConnected || !pcgwLink.isConnected) return;
+            ggLink.href = ggDealsUrl(names.name);
+            // En un DLC, PCGamingWiki va al juego base: no tiene artículo por DLC.
+            pcgwLink.href = pcgwUrl(names.baseName || names.name);
+        });
+
         return box;
     }
 
@@ -515,8 +728,10 @@
         const gogdbButton = createGOGDBButton(slug);
         const links = createExternalLinks(slug);
         container.appendChild(gogdbButton);
-        container.appendChild(links);
-        matchSiblingHeight(links, gogdbButton);
+        if (links) {
+            container.appendChild(links);
+            matchSiblingHeight(links, gogdbButton);
+        }
     }
 
     /**
