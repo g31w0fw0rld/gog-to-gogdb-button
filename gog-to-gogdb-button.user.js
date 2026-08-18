@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.5.0
+// @version      1.5.1
 // @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the product id in the page. GG.deals searches GOG-DRM deals with no store-rating floor, and PCGamingWiki searches for compatibility and fixes. Both search by the English name from GOG's API, because GOG translates game names and both sites index in English; both say so in a tooltip in GOG's own hint style.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -682,16 +682,40 @@
     }
 
     /**
-     * Iguala la altura de la fila a la del botón hermano, midiéndola ya en el DOM.
-     * Silencioso si no se puede medir (la fila se queda con el respaldo del CSS).
+     * Iguala la altura de la fila a la del botón hermano, midiéndola ya en el DOM y
+     * CADA VEZ que ese botón cambie de tamaño. Silencioso si no se puede medir: la
+     * fila se queda con el respaldo del CSS.
+     *
+     * Una sola medida no basta. La altura del botón de GOGDB la pone `button--big`,
+     * de la hoja de estilos de GOG, así que si se mide antes de que esté aplicada
+     * `offsetHeight` vale 0 y la fila se queda desalineada para siempre. Es el mismo
+     * fallo que se vio y se corrigió en el script de Epic, donde la primera fila de la
+     * página salía a 40 px contra los 48 de su hermano.
      * @param {HTMLElement} links - Fila de enlaces externos.
      * @param {HTMLElement} sibling - Botón cuya altura hay que copiar.
      */
     function matchSiblingHeight(links, sibling) {
-        try {
-            const h = sibling.offsetHeight;
-            if (h > 0) links.style.setProperty('--gogx-h', `${h}px`);
-        } catch (e) { /* sin medida: manda el valor por defecto del CSS */ }
+        let observer = null;
+        const apply = () => {
+            try {
+                // Al navegar por la SPA la fila se retira; seguir observando su botón
+                // dejaría un observer colgado por cada ficha visitada.
+                if (!links.isConnected) {
+                    if (observer) { observer.disconnect(); observer = null; }
+                    return;
+                }
+                const h = sibling.offsetHeight;
+                if (h > 0) links.style.setProperty('--gogx-h', `${h}px`);
+            } catch (e) { /* sin medida: manda el valor por defecto del CSS */ }
+        };
+
+        apply();
+        if (typeof ResizeObserver === 'function') {
+            try {
+                observer = new ResizeObserver(apply);
+                observer.observe(sibling);
+            } catch (e) { observer = null; }
+        }
     }
 
     /**
@@ -722,15 +746,27 @@
         if (!slug || !container) return;
 
         removeStaleButtons(slug);
-        if (container.querySelector(`[${BUTTON_ATTR}="${slug}"]`)) return;
-
         injectStyles();
-        const gogdbButton = createGOGDBButton(slug);
-        const links = createExternalLinks(slug);
-        container.appendChild(gogdbButton);
-        if (links) {
-            container.appendChild(links);
-            matchSiblingHeight(links, gogdbButton);
+
+        // Cada pieza se comprueba POR SEPARADO, y no con un "¿hay algo marcado con
+        // este producto?". Las dos llevan la misma marca, así que el botón de GOGDB
+        // bastaba para dar el trabajo por terminado: si la fila no se podía construir
+        // en esa pasada —la ficha todavía sin encabezado legible mientras la SPA la
+        // rehace—, la siguiente pasada del observer se volvía atrás en la guarda y la
+        // fila se perdía para siempre, dejando el botón de GOGDB solo. Comprobando por
+        // separado, el observer que ya existe la añade en cuanto se pueda.
+        let gogdbButton = container.querySelector(`.${GOGDB_LINK_CLASS}[${BUTTON_ATTR}="${slug}"]`);
+        if (!gogdbButton) {
+            gogdbButton = createGOGDBButton(slug);
+            container.appendChild(gogdbButton);
+        }
+
+        if (!container.querySelector(`.${LINKS_CLASS}[${BUTTON_ATTR}="${slug}"]`)) {
+            const links = createExternalLinks(slug);
+            if (links) {
+                container.appendChild(links);
+                matchSiblingHeight(links, gogdbButton);
+            }
         }
     }
 
