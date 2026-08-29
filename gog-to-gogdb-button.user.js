@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.5.2
+// @version      1.5.3
 // @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the product id in the page. GG.deals searches GOG-DRM deals with no store-rating floor, and PCGamingWiki searches for compatibility and fixes. Both search by the English name from GOG's API, because GOG translates game names and both sites index in English; both say so in a tooltip in GOG's own hint style.
 // @author       g31w0fw0rld
 // @license      MIT
@@ -54,14 +54,19 @@
     // busca siempre el juego base; GG.deals sí vende los DLC y las ediciones por
     // separado y se queda con el nombre propio.
     //
-    // El v1 no basta para saber a qué juego pertenece: su `game_type` dice si es
-    // "dlc" o "pack", pero no de qué, y de los mods ni se entera —los 27 del
-    // catálogo salen como "game" o "pack", como cualquier otro producto—. El
-    // parentesco vive solo en el v2, y está repartido en tres sitios distintos:
+    // **Los MODS no entran aquí: se buscan por su propio nombre.** GOG los declara
+    // como cualquier otro producto —los 27 del catálogo salen con `game_type` "game"
+    // o "pack"— y su juego está en `_links.modifiesGames`, así que resolverlos sería
+    // fácil. Se decidió NO hacerlo, y el porqué es de PCGamingWiki, no de GOG: **hay
+    // mods con artículo propio en la wiki**, y mandarlos al juego base sería perder
+    // justo la página que les corresponde. Se llegó a publicar así en 1.5.2 y se
+    // revirtió en 1.5.3. No volver a «arreglarlo».
     //
-    //   _links.modifiesGames  el juego que modifica un mod. OpenMW (1632787758) ->
-    //                         1435828767, Morrowind GOTY. Lo traen los 27 mods del
-    //                         catálogo, y ningún otro producto de los comprobados.
+    // Lo que sí pertenece a otro juego son los DLC y las ediciones, que la wiki
+    // documenta dentro del juego y no tienen artículo propio. El v1 no basta para
+    // saber a cuál: su `game_type` dice si es "dlc" o "pack", pero no de qué. Eso
+    // vive en el v2, en dos sitios distintos:
+    //
     //   _links.requiresGames  el juego que necesita un DLC —Phantom Liberty
     //                         (1256837418) -> 1423049311, Cyberpunk 2077— y también
     //                         el de un pack que agrupa DLC: "Songs of the Past"
@@ -75,12 +80,11 @@
     //                         la MISMA lista sale al abrir la edición base, y ahí no
     //                         hay nada que cambiar.
     //
-    // En todo lo comprobado los tres son excluyentes, así que se miran en ese orden
-    // y manda el primero que conteste. Y como el v1 no delata a los mods, el v2 se
-    // pide para TODOS los productos, no solo para los que el v1 marca "dlc" o
-    // "pack". El otro camino —leer el banner de mods de la propia ficha, que nombra
-    // y enlaza el juego requerido— depende de que el DOM ya lo haya pintado, y
-    // perder esa carrera dejaría el juego base vacío guardado en la caché 30 días.
+    // Los dos son excluyentes en todo lo comprobado, así que se miran en ese orden y
+    // manda el primero que conteste. El v2 se pide para TODOS los productos y no solo
+    // para los que el v1 marca "dlc" o "pack": el `game_type` no es buena guía de por
+    // dónde buscar —"Songs of the Past" es "pack" y su juego está en `requiresGames`,
+    // con la lista de ediciones vacía—.
     const GOG_GAME_API_V2 = 'https://api.gog.com/v2/games/';
     const GOG_GAME_ID_REGEX = /\/games\/(\d+)/;
     const GOG_BASE_EDITION_REGEX = /^base\b/i;
@@ -89,6 +93,14 @@
     // sin fin.
     const NAME_CACHE_KEY = 'gog2gogdb-en-names';
     const NAME_CACHE_TTL = 30 * 24 * 60 * 60 * 1000;   // 30 días
+    // Versión de lo que se guarda en la caché. **Súbela SIEMPRE que cambie lo que se
+    // guarda o cómo se calcula.** Una entrada escrita por una versión anterior tiene
+    // la misma forma, así que se lee como buena y devuelve el resultado VIEJO durante
+    // 30 días: el arreglo se publica, el usuario actualiza y no ve ningún cambio en
+    // las fichas que ya había visitado. Pasó con los mods de GOG en 1.5.2. Las
+    // entradas sin este campo son de antes y cuentan como no encontradas; se vuelven
+    // a pedir y se sobrescriben.
+    const NAME_CACHE_SCHEMA = 2;
     const NAME_CACHE_MAX = 200;                        // entradas
     const NAME_TIMEOUT_MS = 8000;
 
@@ -179,31 +191,31 @@
     const I18N = {
         en: {
             ggTip: 'Searches the title on GG.deals with the GOG DRM filter. Being a title search, it may not hit the exact game.',
-            pcgwTip: 'Searches PCGamingWiki (compatibility and fixes) for the game itself: without the edition suffix, and for DLC, packs and mods, by their base game. Being a name search, it may not hit the exact article.'
+            pcgwTip: 'Searches PCGamingWiki (compatibility and fixes) for the game itself: without the edition suffix, and for DLC and packs, by their base game. Being a name search, it may not hit the exact article.'
         },
         es: {
             ggTip: 'Busca el título en GG.deals con el filtro de DRM de GOG. Al buscar por nombre, puede no dar con el juego exacto.',
-            pcgwTip: 'Busca en PCGamingWiki (compatibilidad y arreglos) el juego en sí: sin el sufijo de edición y, en DLC, paquetes y mods, por su juego base. Al buscar por nombre, puede no dar con el artículo exacto.'
+            pcgwTip: 'Busca en PCGamingWiki (compatibilidad y arreglos) el juego en sí: sin el sufijo de edición y, en DLC y paquetes, por su juego base. Al buscar por nombre, puede no dar con el artículo exacto.'
         },
         de: {
             ggTip: 'Sucht den Titel auf GG.deals mit dem GOG-DRM-Filter. Da es eine Titelsuche ist, wird nicht immer das exakte Spiel getroffen.',
-            pcgwTip: 'Sucht auf PCGamingWiki (Kompatibilität und Fixes) nach dem Spiel selbst: ohne Editions-Zusatz und bei DLC, Paketen und Mods nach dem Hauptspiel. Da nach dem Namen gesucht wird, trifft es nicht immer den genauen Artikel.'
+            pcgwTip: 'Sucht auf PCGamingWiki (Kompatibilität und Fixes) nach dem Spiel selbst: ohne Editions-Zusatz und bei DLC und Paketen nach dem Hauptspiel. Da nach dem Namen gesucht wird, trifft es nicht immer den genauen Artikel.'
         },
         fr: {
             ggTip: 'Recherche le titre sur GG.deals avec le filtre DRM GOG. S’agissant d’une recherche par titre, le jeu exact peut ne pas être trouvé.',
-            pcgwTip: 'Recherche sur PCGamingWiki (compatibilité et correctifs) le jeu lui-même : sans le suffixe d\'édition et, pour les DLC, les packs et les mods, par leur jeu de base. S\'agissant d\'une recherche par nom, elle peut ne pas tomber sur l\'article exact.'
+            pcgwTip: 'Recherche sur PCGamingWiki (compatibilité et correctifs) le jeu lui-même : sans le suffixe d\'édition et, pour les DLC et les packs, par leur jeu de base. S\'agissant d\'une recherche par nom, elle peut ne pas tomber sur l\'article exact.'
         },
         pl: {
             ggTip: 'Wyszukuje tytuł w GG.deals z filtrem DRM GOG. Ponieważ to wyszukiwanie po tytule, może nie trafić w dokładną grę.',
-            pcgwTip: 'Szuka w PCGamingWiki (zgodność i poprawki) samej gry: bez dopisku edycji, a w przypadku DLC, pakietów i modów — po grze podstawowej. Ponieważ to wyszukiwanie po nazwie, może nie trafić w dokładny artykuł.'
+            pcgwTip: 'Szuka w PCGamingWiki (zgodność i poprawki) samej gry: bez dopisku edycji, a w przypadku DLC i pakietów — po grze podstawowej. Ponieważ to wyszukiwanie po nazwie, może nie trafić w dokładny artykuł.'
         },
         ru: {
             ggTip: 'Ищет название на GG.deals с фильтром DRM GOG. Это поиск по названию, поэтому нужная игра может не найтись.',
-            pcgwTip: 'Ищет в PCGamingWiki (совместимость и исправления) саму игру: без суффикса издания, а для DLC, наборов и модов — по базовой игре. Это поиск по названию, поэтому он может не попасть в нужную статью.'
+            pcgwTip: 'Ищет в PCGamingWiki (совместимость и исправления) саму игру: без суффикса издания, а для DLC и наборов — по базовой игре. Это поиск по названию, поэтому он может не попасть в нужную статью.'
         },
         zh: {
             ggTip: '在 GG.deals 上按 GOG DRM 筛选搜索该标题。由于是按标题搜索，可能无法精确匹配到该游戏。',
-            pcgwTip: '在 PCGamingWiki（兼容性与修复）上搜索游戏本体：去掉版本后缀，DLC、捆绑包和 Mod 则按其本体游戏搜索。由于是按名称搜索，可能无法精确对应到该条目。'
+            pcgwTip: '在 PCGamingWiki（兼容性与修复）上搜索游戏本体：去掉版本后缀，DLC 和捆绑包则按其本体游戏搜索。由于是按名称搜索，可能无法精确对应到该条目。'
         }
     };
     // Merge sobre `en`: una clave que falte en un idioma cae al inglés en vez de
@@ -334,7 +346,7 @@
         try {
             const all = JSON.parse(localStorage.getItem(NAME_CACHE_KEY) || '{}');
             const hit = all[id];
-            if (hit && Date.now() - hit.ts < NAME_CACHE_TTL) return hit.names;
+            if (hit && hit.v === NAME_CACHE_SCHEMA && Date.now() - hit.ts < NAME_CACHE_TTL) return hit.names;
         } catch (e) { /* caché corrupta: se ignora y se vuelve a pedir */ }
         return null;
     }
@@ -343,7 +355,7 @@
         try {
             let all = {};
             try { all = JSON.parse(localStorage.getItem(NAME_CACHE_KEY) || '{}'); } catch (e) { all = {}; }
-            all[id] = { names, ts: Date.now() };
+            all[id] = { names, ts: Date.now(), v: NAME_CACHE_SCHEMA };
             const keys = Object.keys(all);
             if (keys.length > NAME_CACHE_MAX) {
                 keys.sort((a, b) => (all[a].ts || 0) - (all[b].ts || 0))
@@ -378,14 +390,13 @@
     }
 
     /**
-     * Identificador del juego al que pertenece el producto: el que modifica un mod,
-     * el que necesita un DLC o la edición base de una edición. Los tres caminos
-     * viven en el v2 y son distintos; el porqué de cada uno, en el comentario de
+     * Identificador del juego al que pertenece el producto: el que necesita un DLC o
+     * la edición base de una edición. Los dos caminos viven en el v2 y son distintos;
+     * el porqué de cada uno, y por qué los mods quedan fuera, en el comentario de
      * GOG_GAME_API_V2.
      *
-     * De las listas se toma la primera entrada. Puede haber varias —S.T.A.L.K.E.R.
-     * G.A.M.M.A. (1595922314) declara nueve juegos modificados, y "Songs of the
-     * Past" dos ediciones de The Witcher 3—, y ahí no hay una respuesta única que
+     * De la lista se toma la primera entrada. Puede haber varias —"Songs of the Past"
+     * declara dos ediciones de The Witcher 3—, y ahí no hay una respuesta única que
      * elegir: PCGamingWiki tiene un artículo por juego.
      * @param {string} id - Identificador del producto en GOG.
      * @returns {Promise<string>} Id del juego base, o cadena vacía.
@@ -394,9 +405,7 @@
         const v2 = await fetchJson(GOG_GAME_API_V2 + encodeURIComponent(id));
         if (!v2) return '';
 
-        // Concatenadas y no `a || b`: una lista presente pero vacía es un valor
-        // verdadero, y con `||` se comería la siguiente.
-        const related = [...(v2._links?.modifiesGames || []), ...(v2._links?.requiresGames || [])];
+        const related = v2._links?.requiresGames || [];
         const relatedId = ((related[0]?.href || '').match(GOG_GAME_ID_REGEX) || [])[1] || '';
         if (relatedId) return relatedId;
 
@@ -414,13 +423,12 @@
      *
      * Cuesta dos peticiones (producto y v2 del producto) y tres cuando hay juego
      * base (más el producto del base), pero solo la primera vez: la caché guarda por
-     * id, así que el título del juego base se reaprovecha entre todos sus DLC y sus
-     * mods. Y el orden importa: si el v2 no contesta o el producto no declara juego
+     * id, así que el título del juego base se reaprovecha entre todos sus DLC. Y el
+     * orden importa: si el v2 no contesta o el producto no declara juego
      * base, se devuelve igualmente el nombre propio en vez de no devolver nada.
      * @param {string} id - Identificador del producto en GOG (el `card-product`).
      * @returns {Promise<{name: string, baseName: string}|null>} Nombre propio y, si
-     *     es un DLC, una edición o un mod, el del juego base; null si no se pudo
-     *     obtener.
+     *     es un DLC o una edición, el del juego base; null si no se pudo obtener.
      */
     async function fetchEnglishNames(id) {
         const cached = readNameCache(id);
@@ -693,8 +701,9 @@
             if (!names) return;
             if (!ggLink.isConnected || !pcgwLink.isConnected) return;
             ggLink.href = ggDealsUrl(names.name);
-            // En un DLC, una edición o un mod, PCGamingWiki va al juego base: no
-            // tiene artículo para ninguno de los tres.
+            // En un DLC o una edición, PCGamingWiki va al juego base: no tiene
+            // artículo para el empaquetado. Los mods NO: se quedan con su nombre,
+            // porque muchos sí tienen artículo propio en la wiki.
             pcgwLink.href = pcgwUrl(names.baseName || names.name);
         });
 
