@@ -1,8 +1,9 @@
 // ==UserScript==
 // @name         GOG to GOGDB Button
 // @namespace    https://gog.com/
-// @version      1.5.3
+// @version      1.5.4
 // @description  Adds three buttons to GOG.com game pages, styled like GOG's own. GOG Database links to that exact product (builds, product data, price history, store changes), built from the product id in the page. GG.deals searches GOG-DRM deals with no store-rating floor, and PCGamingWiki searches for compatibility and fixes. Both search by the English name from GOG's API, because GOG translates game names and both sites index in English; both say so in a tooltip in GOG's own hint style.
+// @icon         data:image/png;base64,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
 // @author       g31w0fw0rld
 // @license      MIT
 // @match        https://www.gog.com/*/game/*
@@ -119,6 +120,18 @@
     const GOGDB_LINK_CLASS = 'gogx-gogdb';
     const ICON_CLASS = 'gogx-ico';
     const STYLES_ID = 'gogx-styles';
+    // Envoltorio de los tres botones. En escritorio no hace nada —los deja
+    // apilados, como estaban—; existe para que en móvil los tres puedan compartir
+    // un renglón, que sin un padre flex común no es posible: el botón de GOG
+    // Database y la fila de enlaces son hermanos entre los hijos de la caja de
+    // compra, y volver flex esa caja sería reventarle la maqueta al sitio.
+    const BLOCK_CLASS = 'gogx-block';
+    const LABEL_LONG_CLASS = 'gogx-long';
+    const LABEL_SHORT_CLASS = 'gogx-short';
+    // El punto de corte de la maqueta de móvil de GOG (bundle_min.css de la ficha
+    // de producto usa max-width: 736px), copiado para cambiar en el mismo sitio en
+    // el que cambia la tienda.
+    const MOBILE_MAX_WIDTH = 736;
 
     // Clases del componente "hint" de GOG, que es como la tienda dibuja sus propios
     // tooltips (lo usa, por ejemplo, en el botón de guardar reseña). Es CSS puro, sin
@@ -300,10 +313,19 @@
         icon.style.top = '50%';
         icon.style.transform = 'translateY(-50%)';
 
-        // Texto del botón
+        // Texto del botón, con sus DOS etiquetas puestas: el CSS enseña una u otra
+        // según el ancho. En móvil los tres botones comparten renglón y ahí no cabe
+        // "GOG Database"; "GOGDB" es como se llama el sitio de destino.
         const label = document.createElement('span');
         label.className = 'cart-button__state-default';
-        label.textContent = 'GOG Database';
+        const long = document.createElement('span');
+        long.className = LABEL_LONG_CLASS;
+        long.textContent = 'GOG Database';
+        const short = document.createElement('span');
+        short.className = LABEL_SHORT_CLASS;
+        short.textContent = 'GOGDB';
+        label.appendChild(long);
+        label.appendChild(short);
 
         wrapper.appendChild(icon);
         wrapper.appendChild(label);
@@ -520,6 +542,44 @@
                 width: max-content; max-width: 240px;
                 bottom: calc(var(--gogx-h, 40px) + 8px);
             }
+
+            /* En escritorio el envoltorio no pinta nada: los dos bloques siguen
+               apilados, que es como caben en una columna de compra de 380 px. */
+            .${LABEL_SHORT_CLASS} { display: none; }
+            @media screen and (max-width: ${MOBILE_MAX_WIDTH}px) {
+                /* En móvil la caja de compra ocupa el ancho de la pantalla, y ahí
+                   sí dan los tres botones en un renglón. El de GOGDB pesa uno y la
+                   fila de enlaces dos, que es lo que la deja con dos botones del
+                   mismo ancho que él. */
+                .${BLOCK_CLASS} { display: flex; align-items: stretch; gap: 8px; }
+                .${BLOCK_CLASS} > .${GOGDB_LINK_CLASS} { flex: 1 1 0; min-width: 0; }
+                .${BLOCK_CLASS} > .${LINKS_CLASS} { flex: 2 1 0; min-width: 0; }
+                /* Los dos tienen que arrancar a la misma altura, y el del botón de
+                   GOGDB es un estilo en línea: solo se le gana con !important. */
+                .${BLOCK_CLASS} > .${GOGDB_LINK_CLASS} { margin-top: 16px !important; }
+                .${BLOCK_CLASS} > .${LINKS_CLASS} { margin-top: 16px; }
+                /* Botón de GOGDB a la medida de los otros dos: su padding de 15px y
+                   su cuerpo heredado lo hacían el doble de ancho de lo que cabe. */
+                .${BLOCK_CLASS} > .${GOGDB_LINK_CLASS} {
+                    padding: 5px 8px; font-size: 12px; line-height: 1.3;
+                    display: inline-flex; align-items: center; justify-content: center;
+                    white-space: nowrap; overflow: hidden;
+                }
+                /* Su icono va posicionado FUERA del texto (left: -35px) para colgar
+                   a la izquierda de la etiqueta centrada. Con el botón estrecho eso
+                   lo sacaba del propio botón, así que aquí vuelve al flujo, como en
+                   los otros dos. Son estilos en línea: hace falta !important. */
+                .${BLOCK_CLASS} > .${GOGDB_LINK_CLASS} .cart-button__wrapper {
+                    display: inline-flex; align-items: center; gap: 6px;
+                }
+                .${BLOCK_CLASS} > .${GOGDB_LINK_CLASS} img {
+                    position: static !important; transform: none !important;
+                    left: auto !important; top: auto !important;
+                    width: 16px !important; height: 16px !important;
+                }
+                .${LABEL_LONG_CLASS} { display: none; }
+                .${LABEL_SHORT_CLASS} { display: inline; }
+            }
         `;
         (document.head || document.documentElement).appendChild(style);
     }
@@ -530,10 +590,13 @@
      * central y "copiar dirección del enlace".
      * El `title` se pone siempre: es la caída para cuando el hint de GOG no se pueda
      * montar. wrapInHint() lo retira cuando sí lo monta.
-     * @param {{ label: string, url: string, iconSvg?: string, iconUrl?: string, tooltip: string }} opts
+     * Con `shortLabel` el enlace lleva las DOS etiquetas puestas y es el CSS el que
+     * enseña una u otra según el ancho, para que el cambio siga al girar el teléfono
+     * sin escuchar `resize`.
+     * @param {{ label: string, shortLabel?: string, url: string, iconSvg?: string, iconUrl?: string, tooltip: string }} opts
      * @returns {HTMLAnchorElement} El enlace listo para insertar.
      */
-    function createLinkButton({ label, url, iconSvg, iconUrl, tooltip }) {
+    function createLinkButton({ label, shortLabel, url, iconSvg, iconUrl, tooltip }) {
         const a = document.createElement('a');
         a.className = LINK_CLASS;
         a.href = url;
@@ -554,7 +617,18 @@
             img.addEventListener('error', () => img.remove());  // sin icono si el CSP lo bloquea
             a.appendChild(img);
         }
-        a.appendChild(document.createTextNode(label));
+        if (shortLabel) {
+            const long = document.createElement('span');
+            long.className = LABEL_LONG_CLASS;
+            long.textContent = label;
+            const short = document.createElement('span');
+            short.className = LABEL_SHORT_CLASS;
+            short.textContent = shortLabel;
+            a.appendChild(long);
+            a.appendChild(short);
+        } else {
+            a.appendChild(document.createTextNode(label));
+        }
         return a;
     }
 
@@ -683,6 +757,9 @@
         });
         const pcgwLink = createLinkButton({
             label: 'PCGamingWiki',
+            // En móvil los tres botones comparten renglón y "PCGamingWiki" es la
+            // etiqueta que no cabe; el logo de al lado ya dice de qué sitio es.
+            shortLabel: 'PCGW',
             url: pcgwUrl(title),
             iconSvg: PCGW_ICON_SVG,
             tooltip: t.pcgwTip
@@ -777,6 +854,17 @@
         removeStaleButtons(slug);
         injectStyles();
 
+        // Envoltorio de los dos bloques. Lleva la misma marca de producto, así que
+        // removeStaleButtons() se lo lleva entero al navegar por la SPA —con sus
+        // hijos dentro— y no queda un envoltorio vacío del producto anterior.
+        let block = container.querySelector(`.${BLOCK_CLASS}[${BUTTON_ATTR}="${slug}"]`);
+        if (!block) {
+            block = document.createElement('div');
+            block.className = BLOCK_CLASS;
+            block.setAttribute(BUTTON_ATTR, slug);
+            container.appendChild(block);
+        }
+
         // Cada pieza se comprueba POR SEPARADO, y no con un "¿hay algo marcado con
         // este producto?". Las dos llevan la misma marca, así que el botón de GOGDB
         // bastaba para dar el trabajo por terminado: si la fila no se podía construir
@@ -784,16 +872,16 @@
         // rehace—, la siguiente pasada del observer se volvía atrás en la guarda y la
         // fila se perdía para siempre, dejando el botón de GOGDB solo. Comprobando por
         // separado, el observer que ya existe la añade en cuanto se pueda.
-        let gogdbButton = container.querySelector(`.${GOGDB_LINK_CLASS}[${BUTTON_ATTR}="${slug}"]`);
+        let gogdbButton = block.querySelector(`.${GOGDB_LINK_CLASS}[${BUTTON_ATTR}="${slug}"]`);
         if (!gogdbButton) {
             gogdbButton = createGOGDBButton(slug);
-            container.appendChild(gogdbButton);
+            block.appendChild(gogdbButton);
         }
 
-        if (!container.querySelector(`.${LINKS_CLASS}[${BUTTON_ATTR}="${slug}"]`)) {
+        if (!block.querySelector(`.${LINKS_CLASS}[${BUTTON_ATTR}="${slug}"]`)) {
             const links = createExternalLinks(slug);
             if (links) {
-                container.appendChild(links);
+                block.appendChild(links);
                 matchSiblingHeight(links, gogdbButton);
             }
         }
