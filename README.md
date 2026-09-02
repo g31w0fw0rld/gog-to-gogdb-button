@@ -6,6 +6,10 @@ Tampermonkey userscript that adds GOGDB, GG.deals and PCGamingWiki buttons to GO
 
 *Game page: the three buttons close the purchase column, styled like GOG's own. GOG Database takes the full width; GG.deals and PCGamingWiki split the row below it, at the same height. / Página de juego: los tres botones cierran la columna de compra, con el estilo de los propios de GOG. GOG Database ocupa todo el ancho; GG.deals y PCGamingWiki se reparten la fila de abajo, a la misma altura.*
 
+<img src="docs/screenshot-game-mobile.png" width="375" alt="The three buttons sharing one row at the end of the purchase box on a phone">
+
+*The same page on a phone: GOG stacks the purchase box to the full width, so the three drop to a single row —GOGDB, GG.deals and PCGW, each with a short label— instead of taking three lines of their own. / La misma ficha en un móvil: GOG apila la caja de compra a todo el ancho, así que los tres bajan a un solo renglón —GOGDB, GG.deals y PCGW, cada uno con etiqueta corta— en vez de llevarse tres líneas.*
+
 ## English
 
 ### What it does
