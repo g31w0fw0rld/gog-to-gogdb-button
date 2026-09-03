@@ -1,6 +1,6 @@
 # GOG to GOGDB Button
 
-Tampermonkey userscript that adds GOGDB, GG.deals and PCGamingWiki buttons to GOG.com game pages. / Userscript de Tampermonkey que añade botones a GOGDB, GG.deals y PCGamingWiki en las páginas de juego de GOG.com.
+Userscript that adds GOGDB, GG.deals and PCGamingWiki buttons to GOG.com game pages. / Userscript que añade botones a GOGDB, GG.deals y PCGamingWiki en las páginas de juego de GOG.com.
 
 ![The GOG Database button and, below it, GG.deals and PCGamingWiki sharing a row at the end of the purchase column on a GOG game page](docs/screenshot-game.png)
 
@@ -35,7 +35,7 @@ Details worth knowing:
 **Language:** the labels are brand names, the same in every language. The two tooltips come in **7 languages** — English, Spanish, German, French, Polish, Russian and Chinese — taken first from the locale segment of the URL (`/de/game/…`), which is an explicit choice and travels in any link you share; then from `<html lang>`, which covers the paths without a segment; then from your browser, falling back to English.
 
 **Install:**
-1. Install [Tampermonkey](https://www.tampermonkey.net/).
+1. Install a userscript manager: [Violentmonkey](https://violentmonkey.github.io/) (open source, Chrome/Edge/Firefox) or [Tampermonkey](https://www.tampermonkey.net/). On Chrome and Edge, also turn on **Allow user scripts** on the extension's own page in `chrome://extensions` — without it nothing runs.
 2. Open the installer: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (also on [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) and [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
 **Site:** `gog.com/…/game/*` — any store language, with or without the locale segment.
@@ -65,7 +65,7 @@ Detalles que conviene saber:
 **Idioma:** las etiquetas son marcas, iguales en cualquier idioma. Los dos tooltips vienen en **7 idiomas** —inglés, español, alemán, francés, polaco, ruso y chino—, tomados primero del segmento de idioma de la URL (`/de/game/…`), que es una elección explícita y viaja en el enlace que compartas; luego del `<html lang>`, que cubre las rutas sin segmento; luego del navegador, con inglés como respaldo.
 
 **Instalación:**
-1. Instala [Tampermonkey](https://www.tampermonkey.net/).
+1. Instala un gestor de userscripts: [Violentmonkey](https://violentmonkey.github.io/) (código abierto, Chrome/Edge/Firefox) o [Tampermonkey](https://www.tampermonkey.net/). En Chrome y Edge, activa además **Allow user scripts** en la página de la propia extensión en `chrome://extensions`; sin eso no se ejecuta nada.
 2. Abre el instalador: [gog-to-gogdb-button.user.js](https://github.com/g31w0fw0rld/gog-to-gogdb-button/raw/main/gog-to-gogdb-button.user.js) (también en [GreasyFork](https://greasyfork.org/es-419/users/1590477-g31w) y [OpenUserJS](https://openuserjs.org/users/g31w0fw0rldgmail.com/scripts)).
 
 **Sitio:** `gog.com/…/game/*` — cualquier idioma de la tienda, con o sin el segmento de locale.
